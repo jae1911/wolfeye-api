@@ -34,6 +34,8 @@ log.setLevel(logging.ERROR)
 db.database.connect()
 db.database.create_tables([db.Search, db.Token])
 
+db.migrate_db()
+
 redis_host = os.environ.get('REDIS_HOST')
 if redis_host:
 	r = redis.Redis(host=redis_host, port=6379, charset="utf-8", decode_responses=True)
