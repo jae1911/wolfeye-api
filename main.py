@@ -43,19 +43,19 @@ def update_cache_count():
 	if res:
 		count = res
 		r.set('total_count', res)
-	print(f'UPDATED COUNTS, NEW IS {count}')
+	logging.info(f'UPDATED COUNTS, NEW IS {count}')
 
 def remove_old_instant_answers():
 	for key in r.scan_iter("isearch_*"):
-		print(key)
+		logging.info(key)
 		r.delete(key)
-	print("CLEANED INSTANT ANSWERS")
+	logging.info("CLEANED INSTANT ANSWERS")
 
 def remove_old_queries():
 	for key in r.scan_iter("search_*"):
-		print(key)
+		logging.info(key)
 		r.delete(key)
-	print("CLEANED QUERIES")
+	logging.info("CLEANED QUERIES")
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=update_cache_count, trigger="interval", minutes=30)
@@ -65,7 +65,7 @@ scheduler.start()
 
 @app.before_request
 def before_request():
-	print(f"{get_remote_address()} | {request.headers.get('X-Forwarded-For')} | {request.headers.get('X-Real-IP')}")
+	logging.info(f"{get_remote_address()} | {request.headers.get('X-Forwarded-For')} | {request.headers.get('X-Real-IP')}")
 
 @app.route('/api/ping')
 def api_ping():
