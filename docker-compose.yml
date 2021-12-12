@@ -10,4 +10,4 @@ services:
     # image: 
     build: .
     volumes:
-      - ./wolfeye/:/app
+      - ./wolfeye/:/app/db

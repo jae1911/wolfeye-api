@@ -1,6 +1,6 @@
 from peewee import *
 
-database = SqliteDatabase('search.db')
+database = SqliteDatabase('db/search.db')
 
 class BaseModel(Model):
 	""" Base to be used by other tables
