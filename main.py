@@ -29,7 +29,7 @@ limiter = Limiter(
 )
 
 log = logging.getLogger('werkzeug')
-log.setLevel(logging.INFO)
+log.setLevel(logging.ERROR)
 
 db.database.connect()
 db.database.create_tables([db.Search, db.Token])
