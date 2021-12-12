@@ -42,32 +42,6 @@ if redis_host:
 else:
 	r = redis.Redis(host='redis', port=6379, charset="utf-8", decode_responses=True)
 
-def update_cache_count():
-	count = 0
-	res = db.Search.select().count()
-	if res:
-		count = res
-		r.set('total_count', res)
-	log.info(f'UPDATED COUNTS, NEW IS {count}')
-
-def remove_old_instant_answers():
-	for key in r.scan_iter("isearch_*"):
-		log.info(key)
-		r.delete(key)
-	log.info("CLEANED INSTANT ANSWERS")
-
-def remove_old_queries():
-	for key in r.scan_iter("search_*"):
-		log.info(key)
-		r.delete(key)
-	log.info("CLEANED QUERIES")
-
-scheduler = BackgroundScheduler()
-scheduler.add_job(func=update_cache_count, trigger="interval", minutes=30)
-scheduler.add_job(func=remove_old_queries, trigger="interval", minutes=15)
-scheduler.add_job(func=remove_old_instant_answers, trigger="interval", hours=1)
-scheduler.start()
-
 @app.route('/api/ping')
 @limiter.exempt
 def api_ping():
@@ -82,17 +56,20 @@ def api_total_db():
 	"""
 	count = 0
 	cache = False
+	ttl = 0
 	cached_result = r.get('total_count')
 	if cached_result:
 		count = int(cached_result)
 		cache = True
+		ttl = r.ttl('total_count')
 	else:
 		res = db.Search.select().count()
 		if res:
 			count = res
-			r.set('total_count', res)
+			time_to_expire_s = 1800
+			r.set('total_count', res, ex=time_to_expire_s)
 
-	return jsonify({'count': count, 'cache-hit': cache})
+	return jsonify({'count': count, 'cache-hit': cache, 'ttl': ttl})
 
 @app.route('/api/search', methods=['POST'])
 def api_search():
@@ -110,6 +87,7 @@ def api_search():
 
 	cache = False
 	res = None
+	ttl = 0
 
 	query_trimmed = query.replace(' ', '_').replace('\'', '-')
 	escaped_query = 'search_' + re.escape(query_trimmed)
@@ -118,6 +96,7 @@ def api_search():
 	if cached_result:
 		res = json.loads(cached_result)
 		cache = True
+		ttl = r.ttl(escaped_query)
 	else:
 		matched_content = []
 
@@ -183,9 +162,10 @@ def api_search():
 					}
 					matched_content.append(match)
 
-		r.set(escaped_query, str(json.dumps(matched_content)))
+		time_to_expire_s = 900
+		r.set(escaped_query, str(json.dumps(matched_content)), ex=time_to_expire_s)
 
-	return jsonify({'res': res, 'cache-hit': cache})
+	return jsonify({'res': res, 'cache-hit': cache, 'ttl': ttl})
 
 @app.route('/api/admin/token/add', methods=['POST'])
 @limiter.exempt
@@ -348,6 +328,7 @@ def api_instant():
 
 	cache = False
 	res = None
+	ttl = 0
 
 	query_trimmed = query.replace(' ', '_').replace('\'', '-')
 	escaped_query = 'isearch_' + re.escape(query_trimmed)
@@ -356,6 +337,7 @@ def api_instant():
 	if cached_result:
 		res = json.loads(cached_result)
 		cache = True
+		ttl = r.ttl(escaped_query)
 	else:
 		ddg_api_query_url = f"https://api.duckduckgo.com/?q={query}&format=json"
 		
@@ -366,6 +348,7 @@ def api_instant():
 
 			res = response
 
-			r.set(escaped_query, str(json.dumps(response)))
+			time_to_expire_s = 3600
+			r.set(escaped_query, str(json.dumps(response)), ex=time_to_expire_s)
 
-	return jsonify({'res': res, 'cache-hit': cache})
+	return jsonify({'res': res, 'cache-hit': cache, 'ttl': ttl})
