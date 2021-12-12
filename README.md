@@ -1,5 +1,7 @@
 # Wolfeye API
 
+![Wolfeye Logo](docs/logo.svg)
+
 This is the repository for the Wolfeye API.  
 It is made to run with Traefik as a reverse proxy.
 
