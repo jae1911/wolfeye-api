@@ -1,6 +1,7 @@
 # Wolfeye API Docs
 
-All API endpoints are rate limited to 20 requests per minutes. Different rate limits are described on the endpoints.
+All API endpoints are rate limited to 20 requests per minutes. Different rate limits are described on the endpoints.  
+Cached endpoints will return a `ttl` response that specifies the life of the cached query.
 
 ```
 GET /api/ping
