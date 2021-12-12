@@ -86,7 +86,8 @@ POST /api/crawler/add
 {
 	"url": "https://minteck.org/",
 	"title": "Minteck's space",
-	"token": "crawler_token"
+	"token": "crawler_token",
+	"description": "page description"
 }
 ```
 Will add the URL and title to the database. To be used by crawlers.
