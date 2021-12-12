@@ -123,7 +123,8 @@ def api_search():
 		for content in first_pass:
 			match = {
 				'title': content.title,
-				'url': content.url
+				'url': content.url,
+				'description': content.description
 			}
 			matched_content.append(match)
 
@@ -143,7 +144,8 @@ def api_search():
 				if not already:
 					match = {
 						'title': content.title,
-						'url': content.url
+						'url': content.url,
+						'description': content.description
 					}
 					matched_content.append(match)
 
@@ -158,7 +160,8 @@ def api_search():
 				if not already:
 					match = {
 						'title': content.title,
-						'url': content.url
+						'url': content.url,
+						'description': content.description
 					}
 					matched_content.append(match)
 
@@ -197,7 +200,8 @@ def api_admin_get_all():
 		query_dict = {
 			'url': query.url,
 			'title': query.title,
-			'last_fetched': query.last_fetched
+			'last_fetched': query.last_fetched,
+			'description': query.description
 		}
 		res.append(query_dict)
 
@@ -230,9 +234,13 @@ def api_crawler_add():
 
 	url = data.get('url')
 	title = data.get('title')
+	description = data.get('description')
 
 	if not url or not title:
 		return jsonify({'err': 'invalid request'}), 400
+
+	if not description:
+		description = 'No description provided for this website.'
 
 	try:
 		existing_url = db.Search.select().where(db.Search.url == url).get()
@@ -240,9 +248,21 @@ def api_crawler_add():
 		existing_url = None
 
 	if existing_url:
-		return jsonify({'err': 'already exists', 'fetched_on': existing_url.last_fetched})
 
-	new_result = db.Search(url=url, title=title, last_fetched=datetime.datetime.now())
+		if existing_url.description == description and existing_url.title == title:
+			return jsonify({'err': 'already exists', 'fetched_on': existing_url.last_fetched})
+		else:
+			if existing_url.description != description:
+				existing_url.description = description
+
+			if existing_url.title != title:
+				existing_url.title = title
+
+			existing_url.last_fetched = datetime.datetime.now()
+			existing_url.save()
+			return jsonify({'success': 'ok'})
+
+	new_result = db.Search(url=url, title=title, description=description, last_fetched=datetime.datetime.now())
 	new_result.save()
 
 	return jsonify({'success': 'ok'})
