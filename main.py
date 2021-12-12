@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request
 from apscheduler.schedulers.background import BackgroundScheduler
+from playhouse.shortcuts import model_to_dict, dict_to_model
 
 import datetime
 import redis
@@ -51,13 +52,48 @@ def api_total_db():
 
 	return jsonify({'count': count, 'cache-hit': cache})
 
+@app.route('/api/admin/get_all')
+def api_admin_get_all():
+	""" Get everything contained in the database
+	"""
+	data = request.json
+
+	if not data:
+		return jsonify({'err': 'invalid request'}), 400
+
+	token = data.get('token')
+	if not token:
+		return jsonify({'err': 'invalid request'}), 400
+
+	try:
+		current_token = db.Token.select().where(db.Token.token == token).get()
+	except:
+		current_token = None
+
+	if not current_token:
+		return jsonify({'err': 'unauthorized'}), 401
+	elif current_token.expiry_date < datetime.datetime.now():
+		return jsonify({'err': 'unauthorized'}), 401
+
+	res = []
+	everything_in_db = db.Search.select()
+
+	for query in everything_in_db:
+		query_dict = {
+			'url': query.url,
+			'title': query.title,
+			'last_fetched': query.last_fetched
+		}
+		res.append(query_dict)
+
+	return jsonify(res)
+
 @app.route('/api/crawler/add', methods=['POST'])
 def api_crawler_add():
 	""" Endpoint for the crawler to add URLs to the database
 	"""
 
 	data = request.json
-	print(data)
 
 	if not data:
 		return jsonify({'err': 'invalid request'}), 400
@@ -86,7 +122,7 @@ def api_crawler_add():
 		existing_url = db.Search.select().where(db.Search.url == url).get()
 	except:
 		existing_url = None
-	
+
 	if existing_url:
 		return jsonify({'err': 'already exists', 'fetched_on': existing_url.last_fetched})
 
