@@ -1,0 +1,13 @@
+version: '2.1'
+
+services:
+  redis:
+    image: redis
+    volumes:
+      - ./wolfeye/redis:/data
+
+  wolfeye:
+    # image: 
+    build: .
+    volumes:
+      - ./wolfeye/:/app

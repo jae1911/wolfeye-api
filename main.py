@@ -17,7 +17,7 @@ app = Flask(__name__)
 db.database.connect()
 db.database.create_tables([db.Search, db.Token])
 
-r = redis.Redis(host='localhost', port=6379, charset="utf-8", decode_responses=True)
+r = redis.Redis(host='redis', port=6379, charset="utf-8", decode_responses=True)
 
 def update_cache_count():
 	count = 0
