@@ -1,17 +1,32 @@
 from flask import Flask, jsonify, request
+from apscheduler.schedulers.background import BackgroundScheduler
 
 import datetime
 import redis
+import time
+import atexit
 
 import db
 
 app = Flask(__name__)
 
+db.database.connect()
 r = redis.Redis(host='localhost', port=6379, charset="utf-8", decode_responses=True)
+
+def update_cache_count():
+	count = 0
+	res = db.Search.select().count()
+	if res:
+		count = res
+		r.set('total_count', res)
+	print(f'UPDATED COUNTS, NEW IS {count}')
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(func=update_cache_count, trigger="interval", minutes=30)
+scheduler.start()
 
 @app.before_first_request
 def init_db_connection():
-	db.database.connect()
 	db.database.create_tables([db.Search])
 
 @app.route('/api/ping')
