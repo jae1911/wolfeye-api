@@ -26,7 +26,7 @@ limiter = Limiter(
 )
 
 log = logging.getLogger('werkzeug')
-log.setLevel(logging.ERROR)
+#log.setLevel(logging.ERROR)
 
 db.database.connect()
 db.database.create_tables([db.Search, db.Token])
@@ -203,6 +203,7 @@ def api_admin_get_all():
 	return jsonify(res)
 
 @app.route('/api/crawler/add', methods=['POST'])
+@limiter.exempt
 def api_crawler_add():
 	""" Endpoint for the crawler to add URLs to the database
 	"""
