@@ -11,6 +11,8 @@ import db
 app = Flask(__name__)
 
 db.database.connect()
+db.database.create_tables([db.Search, db.Token])
+
 r = redis.Redis(host='localhost', port=6379, charset="utf-8", decode_responses=True)
 
 def update_cache_count():
@@ -24,10 +26,6 @@ def update_cache_count():
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=update_cache_count, trigger="interval", minutes=30)
 scheduler.start()
-
-@app.before_first_request
-def init_db_connection():
-	db.database.create_tables([db.Search])
 
 @app.route('/api/ping')
 def api_ping():
@@ -64,15 +62,33 @@ def api_crawler_add():
 	if not data:
 		return jsonify({'err': 'invalid request'}), 400
 
+	token = data.get('token')
+	if not token:
+		return jsonify({'err': 'invalid request'}), 400
+
+	try:
+		current_token = db.Token.select().where(db.Token.token == token).get()
+	except:
+		current_token = None
+
+	if not current_token:
+		return jsonify({'err': 'unauthorized'}), 401
+	elif current_token.expiry_date < datetime.datetime.now():
+		return jsonify({'err': 'unauthorized'}), 401
+
 	url = data.get('url')
 	title = data.get('title')
 
 	if not url or not title:
 		return jsonify({'err': 'invalid request'}), 400
 
-	existing_url = db.Search.select().where(db.Search.url == url).count()
-	if existing_url > 0:
-		return jsonify({'err': 'already exists'})
+	try:
+		existing_url = db.Search.select().where(db.Search.url == url).get()
+	except:
+		existing_url = None
+	
+	if existing_url:
+		return jsonify({'err': 'already exists', 'fetched_on': existing_url.last_fetched})
 
 	new_result = db.Search(url=url, title=title, last_fetched=datetime.datetime.now())
 	new_result.save()

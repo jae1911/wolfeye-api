@@ -13,3 +13,7 @@ class Search(BaseModel):
 	title = CharField()
 	url = CharField()
 	last_fetched = DateTimeField()
+
+class Token(BaseModel):
+	token = CharField()
+	expiry_date = DateTimeField()
