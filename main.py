@@ -1,6 +1,8 @@
 from flask import Flask, jsonify, request
 from apscheduler.schedulers.background import BackgroundScheduler
 from playhouse.shortcuts import model_to_dict, dict_to_model
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 import datetime
 import redis
@@ -16,6 +18,12 @@ import logging
 import db
 
 app = Flask(__name__)
+
+limiter = Limiter(
+	app,
+	key_func=get_remote_address,
+	default_limits=["20 per minute"]
+)
 
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
@@ -154,6 +162,7 @@ def api_search():
 	return jsonify({'res': res, 'cache-hit': cache})
 
 @app.route('/api/admin/get_all')
+@limiter.limit("2 per minute")
 def api_admin_get_all():
 	""" Get everything contained in the database
 	"""
@@ -233,6 +242,7 @@ def api_crawler_add():
 	return jsonify({'success': 'ok'})
 
 @app.route('/api/instant', methods=['POST'])
+@limiter.limit("3 per minute")
 def api_instant():
 	""" Instant answers (DDG API)
 	"""
