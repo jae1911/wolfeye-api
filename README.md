@@ -5,6 +5,8 @@
 This is the repository for the Wolfeye API.  
 It is made to run with Traefik as a reverse proxy.
 
+Currently hosted on https://wolfeye.jae.fi
+
 ## Local dev
 
 This requires a Redis server listening in local.
