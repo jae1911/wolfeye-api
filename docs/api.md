@@ -528,3 +528,21 @@ Will return a JSON response of the instant search. Rate limit is 3 per minute.
 }
 ```
 `cache-hit` indicates the result is cached. Cached results are cleaned every hour for this endpoint.
+
+---
+
+```
+POST /api/admin/token/add
+
+{
+	"token": "mytoken",
+	"newtoken": "mynewtoken",
+	"expiry": "2021-12-31"
+}
+```
+Creates a new token with the specified expiry date. If expiry date not specified, creates a token with an expiry of now + 5000 days.
+```
+{
+	"success": true
+}
+```
