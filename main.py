@@ -10,6 +10,7 @@ import re
 import json
 import ast
 import os
+import requests
 
 import db
 
@@ -32,6 +33,12 @@ def update_cache_count():
 		r.set('total_count', res)
 	print(f'UPDATED COUNTS, NEW IS {count}')
 
+def remove_old_instant_answers():
+	for key in r.scan_iter("isearch_*"):
+		print(key)
+		r.delete(key)
+	print("CLEANED INSTANT ANSWERS")
+
 def remove_old_queries():
 	for key in r.scan_iter("search_*"):
 		print(key)
@@ -41,6 +48,7 @@ def remove_old_queries():
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=update_cache_count, trigger="interval", minutes=30)
 scheduler.add_job(func=remove_old_queries, trigger="interval", minutes=15)
+scheduler.add_job(func=remove_old_instant_answers, trigger="interval", hours=1)
 scheduler.start()
 
 @app.route('/api/ping')
@@ -89,7 +97,6 @@ def api_search():
 	
 	cached_result = r.get(escaped_query)
 	if cached_result:
-		print(cached_result)
 		res = json.loads(cached_result)
 		cache = True
 	else:
@@ -205,3 +212,41 @@ def api_crawler_add():
 	new_result.save()
 
 	return jsonify({'success': 'ok'})
+
+@app.route('/api/instant', methods=['POST'])
+def api_instant():
+	""" Instant answers (DDG API)
+	"""
+	data = request.json
+
+	if not data:
+		return jsonify({'err': 'invalid request'})
+
+	query = data.get('query')
+
+	if not query:
+		return jsonify({'err': 'no query'})
+
+	cache = False
+	res = None
+
+	query_trimmed = query.replace(' ', '_').replace('\'', '-')
+	escaped_query = 'isearch_' + re.escape(query_trimmed)
+
+	cached_result = r.get(escaped_query)
+	if cached_result:
+		res = json.loads(cached_result)
+		cache = True
+	else:
+		ddg_api_query_url = f"https://api.duckduckgo.com/?q={query}&format=json"
+		
+		req = requests.get(ddg_api_query_url)
+
+		if req:
+			response = req.json()
+
+			res = response
+
+			r.set(escaped_query, str(json.dumps(response)))
+
+	return jsonify({'res': res, 'cache-hit': cache})
