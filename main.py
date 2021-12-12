@@ -19,14 +19,17 @@ import db
 
 app = Flask(__name__)
 
+def get_remote_ip():
+	return request.headers.get('X-Forwarded-For')
+
 limiter = Limiter(
 	app,
-	key_func=get_remote_address,
+	key_func=get_remote_ip,
 	default_limits=["20 per minute"]
 )
 
 log = logging.getLogger('werkzeug')
-#log.setLevel(logging.ERROR)
+log.setLevel(logging.INFO)
 
 db.database.connect()
 db.database.create_tables([db.Search, db.Token])
@@ -62,10 +65,6 @@ scheduler.add_job(func=update_cache_count, trigger="interval", minutes=30)
 scheduler.add_job(func=remove_old_queries, trigger="interval", minutes=15)
 scheduler.add_job(func=remove_old_instant_answers, trigger="interval", hours=1)
 scheduler.start()
-
-@app.before_request
-def before_request():
-	log.info(f"{get_remote_address()} | {request.headers.get('X-Forwarded-For')} | {request.headers.get('X-Real-IP')}")
 
 @app.route('/api/ping')
 def api_ping():
