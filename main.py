@@ -9,6 +9,7 @@ import atexit
 import re
 import json
 import ast
+import os
 
 import db
 
@@ -17,7 +18,11 @@ app = Flask(__name__)
 db.database.connect()
 db.database.create_tables([db.Search, db.Token])
 
-r = redis.Redis(host='redis', port=6379, charset="utf-8", decode_responses=True)
+redis_host = os.environ.get('REDIS_HOST')
+if redis_host:
+	r = redis.Redis(host=redis_host, port=6379, charset="utf-8", decode_responses=True)
+else:
+	r = redis.Redis(host='redis', port=6379, charset="utf-8", decode_responses=True)
 
 def update_cache_count():
 	count = 0
