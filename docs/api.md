@@ -1,5 +1,7 @@
 # Wolfeye API Docs
 
+All API endpoints are rate limited to 20 requests per minutes. Different rate limits are described on the endpoints.
+
 ```
 GET /api/ping
 ```
@@ -15,7 +17,7 @@ This will return a JSON response containing
 ```
 GET /api/total_db
 ```
-Will return the total count of URLs contained in the database.
+Will return the total count of URLs contained in the database. Rate limit is 2 per minute.
 ```
 {
 	"cache-hit":true,
@@ -103,7 +105,7 @@ POST /api/instant
 	"query": "reddit"
 }
 ```
-Will return a JSON response of the instant search:
+Will return a JSON response of the instant search. Rate limit is 3 per minute.
 ```
 {
 	"cache-hit": true,
