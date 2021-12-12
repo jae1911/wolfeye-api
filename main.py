@@ -134,6 +134,21 @@ def api_search():
 					}
 					matched_content.append(match)
 
+			third_pass = db.Search().select().where(db.Search.url.contains(shard))
+			for content in third_pass:
+				already = False
+
+				for stuff in matched_content:
+					if content.url == stuff['url']:
+						already = True
+
+				if not already:
+					match = {
+						'title': content.title,
+						'url': content.url
+					}
+					matched_content.append(match)
+
 		r.set(escaped_query, str(json.dumps(matched_content)))
 
 	return jsonify({'res': res, 'cache-hit': cache})
