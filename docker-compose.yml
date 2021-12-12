@@ -7,7 +7,6 @@ services:
       - ./wolfeye/redis:/data
 
   wolfeye:
-    # image: 
-    build: .
+    image: ghcr.io/jaedotmoe/wolfeye-api:latest
     volumes:
       - ./wolfeye/:/app/db
