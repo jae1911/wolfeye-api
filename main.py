@@ -11,10 +11,14 @@ import json
 import ast
 import os
 import requests
+import logging
 
 import db
 
 app = Flask(__name__)
+
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
 
 db.database.connect()
 db.database.create_tables([db.Search, db.Token])
