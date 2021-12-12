@@ -63,6 +63,10 @@ scheduler.add_job(func=remove_old_queries, trigger="interval", minutes=15)
 scheduler.add_job(func=remove_old_instant_answers, trigger="interval", hours=1)
 scheduler.start()
 
+@app.before_request
+def before_request():
+	print(f"{get_remote_address()} | {request.headers.get('X-Forwarded-For')} | {request.headers.get('X-Real-IP')}")
+
 @app.route('/api/ping')
 def api_ping():
 	""" Pings the API to know the status
