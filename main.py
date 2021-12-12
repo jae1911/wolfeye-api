@@ -69,12 +69,14 @@ scheduler.add_job(func=remove_old_instant_answers, trigger="interval", hours=1)
 scheduler.start()
 
 @app.route('/api/ping')
+@limiter.exempt
 def api_ping():
 	""" Pings the API to know the status
 	"""
 	return jsonify({'status': 'ok'})
 
 @app.route('/api/total_db')
+@limiter.exempt
 def api_total_db():
 	""" Gets the total row count of the DB
 	"""
