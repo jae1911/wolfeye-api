@@ -10,4 +10,4 @@ This document compares features between the new WolfEye API and the proof-of-con
 | Database dump | `/api/get_all` (POST) | - |
 | Crawler management | `/api/crawler` (POST) | - |
 | DuckDuckGo Instant Answers integration | - | `/ratelimited/instant.php` (GET) |
-| WolframAlpha integration | - | `/ratelimited/answer.php` (GET) |
+| WolframAlpha integration | *(won't be implemented)* | `/ratelimited/answer.php` (GET) |
