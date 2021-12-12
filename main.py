@@ -6,6 +6,9 @@ import datetime
 import redis
 import time
 import atexit
+import re
+import json
+import ast
 
 import db
 
@@ -24,8 +27,15 @@ def update_cache_count():
 		r.set('total_count', res)
 	print(f'UPDATED COUNTS, NEW IS {count}')
 
+def remove_old_queries():
+	for key in r.scan_iter("search_*"):
+		print(key)
+		r.delete(key)
+	print("CLEANED QUERIES")
+
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=update_cache_count, trigger="interval", minutes=30)
+scheduler.add_job(func=remove_old_queries, trigger="interval", minutes=15)
 scheduler.start()
 
 @app.route('/api/ping')
@@ -51,6 +61,66 @@ def api_total_db():
 			r.set('total_count', res)
 
 	return jsonify({'count': count, 'cache-hit': cache})
+
+@app.route('/api/search', methods=['POST'])
+def api_search():
+	""" Search the database
+	"""
+	data = request.json
+
+	if not data:
+		return jsonify({'err': 'invalid request'}), 400
+
+	query = data.get('query')
+
+	if not query:
+		return jsonify({'err': 'missing query'}), 400
+
+	cache = False
+	res = None
+
+	query_trimmed = query.replace(' ', '_').replace('\'', '-')
+	escaped_query = 'search_' + re.escape(query_trimmed)
+	
+	cached_result = r.get(escaped_query)
+	if cached_result:
+		print(cached_result)
+		res = json.loads(cached_result)
+		cache = True
+	else:
+		matched_content = []
+
+		first_pass = db.Search().select().where(db.Search.title.contains(query))
+		for content in first_pass:
+			match = {
+				'title': content.title,
+				'url': content.url
+			}
+			matched_content.append(match)
+
+			res = matched_content
+
+		exploded_query = query.split(' ')
+		for shard in exploded_query:
+			second_pass = db.Search().select().where(db.Search.title.contains(shard))
+
+			for content in second_pass:
+				already = False
+
+				for stuff in matched_content:
+					if content.url == stuff['url']:
+						already = True
+
+				if not already:
+					match = {
+						'title': content.title,
+						'url': content.url
+					}
+					matched_content.append(match)
+
+		r.set(escaped_query, str(json.dumps(matched_content)))
+
+	return jsonify({'res': res, 'cache-hit': cache})
 
 @app.route('/api/admin/get_all')
 def api_admin_get_all():
