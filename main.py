@@ -185,6 +185,52 @@ def api_search():
 
 	return jsonify({'res': res, 'cache-hit': cache})
 
+@app.route('/api/admin/token/add', methods=['POST'])
+@limiter.exempt
+def api_admin_token_add():
+	""" Adds a new token
+	"""
+	data = request.json
+
+	if not data:
+		return jsonify({'err': 'invalid request'}), 400
+
+	token = data.get('token')
+	if not token:
+		return jsonify({'err': 'invalid request'}), 400
+
+	try:
+		current_token = db.Token.select().where(db.Token.token == token).get()
+	except:
+		current_token = None
+
+	if not current_token:
+		return jsonify({'err': 'unauthorized'}), 401
+	elif current_token.expiry_date < datetime.datetime.now():
+		return jsonify({'err': 'unauthorized'}), 401
+
+	new_token = data.get('newtoken')
+
+	if not new_token:
+		return jsonify({'err': 'invalid request'}), 400
+
+	expiry = data.get('expiry')
+
+	if not expiry:
+		expiry = datetime.datetime.now() + datetime.timedelta(days=5000)
+
+	try:
+		existing = db.Token.select().where(db.Token.token == new_token).get()
+	except:
+		existing = None
+	if existing:
+		return jsonify({'err': 'exists'})
+
+	create_token = db.Token(token=new_token, expiry_date=expiry)
+	create_token.save()
+
+	return jsonify({'success': True})
+
 @app.route('/api/admin/get_all')
 @limiter.limit("2 per minute")
 def api_admin_get_all():
