@@ -3,6 +3,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from playhouse.shortcuts import model_to_dict, dict_to_model
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from autocorrect import Speller
 
 import datetime
 import redis
@@ -70,6 +71,44 @@ def api_total_db():
 			r.set('total_count', res, ex=time_to_expire_s)
 
 	return jsonify({'count': count, 'cache-hit': cache, 'ttl': ttl})
+
+@app.route('/api/tocorrect', methods=['POST'])
+@limiter.exempt
+def api_tocorrect():
+	""" Sends a correction of the provided string
+	"""
+	data = request.json
+
+	if not data:
+		return jsonify({'err': 'invalid query'}), 400
+
+	string_base = data.get('string')
+
+	if not string_base:
+		return jsonify({'err': 'missing string'}), 400
+
+	res = None
+	cache = False
+	ttl = 0
+	corrected = False
+
+	cached_result = r.get(string_base)
+	if cached_result:
+		res = cached_result
+		cache = True
+		corrected = True
+		ttl = r.ttl(string_base)
+	else:
+		spell = Speller()
+		res = spell(string_base)
+
+		if res != string_base:
+			corrected = True
+			final_ttl = 60 * 60 * 24
+			r.set(string_base, res, ex=final_ttl)
+
+	return jsonify({'res': res, 'corrected': corrected, 'cache-hit': cache, 'ttl': ttl})
+
 
 @app.route('/api/search', methods=['POST'])
 def api_search():
