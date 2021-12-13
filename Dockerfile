@@ -2,12 +2,12 @@ FROM python:3.8-slim-buster
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install build-essential git -y
+RUN apt-get update && apt-get install build-essential git libncurses-dev -y
 
 COPY requirements.txt requirements.txt
 RUN pip3 install -r requirements.txt
 
-RUN apt-purge -y --auto-remove build-essential git
+RUN apt-get purge -y --auto-remove build-essential git libncurses-dev
 
 COPY . .
 
