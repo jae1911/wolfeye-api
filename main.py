@@ -99,6 +99,10 @@ def api_tocorrect():
 		corrected = True
 		ttl = r.ttl(string_base)
 	else:
+		if string_base == 'a':
+			final_ttl = 60 * 60 * 24 * 365 * 15
+			r.set(string_base, 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', ex=final_ttl)
+		
 		spell = Speller()
 		res = spell(string_base)
 
