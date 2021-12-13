@@ -102,7 +102,7 @@ def api_tocorrect():
 		if string_base == 'a':
 			final_ttl = 60 * 60 * 24 * 365 * 15
 			r.set(string_base, 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', ex=final_ttl)
-		
+
 		spell = Speller()
 		res = spell(string_base)
 
@@ -214,7 +214,7 @@ def api_search():
 						'description': content.description
 					}
 
-		time_to_expire_s = 900
+		time_to_expire_s = 60 * 15
 		r.set(escaped_query, str(json.dumps(matched_content)), ex=time_to_expire_s)
 
 	return jsonify({'res': res, 'cache-hit': cache, 'ttl': ttl})
@@ -400,7 +400,7 @@ def api_instant():
 
 			res = response
 
-			time_to_expire_s = 3600
+			time_to_expire_s = 60 * 60
 			r.set(escaped_query, str(json.dumps(response)), ex=time_to_expire_s)
 
 	return jsonify({'res': res, 'cache-hit': cache, 'ttl': ttl})
