@@ -162,6 +162,15 @@ def api_search():
 					}
 					matched_content.append(match)
 
+			if not matched_content:
+				fifth_pass = db.Search().select().where(db.Search.url.contains(shard))
+				for content in fifth_pass:
+					match = {
+						'title': content.title,
+						'url': content.url,
+						'description': content.description
+					}
+
 		time_to_expire_s = 900
 		r.set(escaped_query, str(json.dumps(matched_content)), ex=time_to_expire_s)
 
