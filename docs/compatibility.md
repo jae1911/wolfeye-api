@@ -9,8 +9,10 @@ This document compares features between the new WolfEye API and the proof-of-con
 | Search | `/api/search` (POST) | `/search` (GET) |
 | Database dump | `/api/get_all` (POST) | - |
 | Crawler management | `/api/crawler` (POST) | - |
-| DuckDuckGo Instant Answers integration | `/api/instant` | `/ratelimited/instant.php` (GET) |
+| DuckDuckGo Instant Answers integration | `/api/instant` (POST) | `/ratelimited/instant.php` (GET) |
 | WolframAlpha integration | *(won't be implemented)* | `/ratelimited/answer.php` (GET) |
+| Correct input | `/api/tocorrect` (POST) | - |
+| Crawler add URL | `/api/crawler/add` (POST) | - |
 
 ----
 
