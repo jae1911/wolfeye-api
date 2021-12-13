@@ -547,3 +547,22 @@ Creates a new token with the specified expiry date. If expiry date not specified
 	"success": true
 }
 ```
+
+---
+
+```
+POST /api/tocorrect
+
+{
+	"string": "I'm not sleapy and tehre is no place I'm giong to."
+}
+```
+Will try to correct the provided string. `corrected` is set to False if nothing is corrected. Answers are cached for 24h.
+```
+{
+	"cache-hit": true,
+	"corrected": true,
+	"res": "I'm not sleepy and there is no place I'm going to.",
+	"ttl": 86379
+}
+```
