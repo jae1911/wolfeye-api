@@ -33,10 +33,11 @@ Will return the total count of URLs contained in the database. Rate limit is 2 p
 POST /api/search
 
 {
-	"query": "query to be searched"
+	"query": "query to be searched",
+	"page": 0
 }
 ```
-Will return a JSON response of matched URLs:
+Will return a JSON response of matched URLs, maximum returned in one go is 150 and then you need to pass the `page` parameter.
 ```
 {
 	"cache-hit": true,
