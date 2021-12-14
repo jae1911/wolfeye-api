@@ -14,5 +14,6 @@ before_script:
 
 test:
   script:
+    - /usr/local/bin/python -m pip install --upgrade pip
     - pip install -r requirements.txt
     - REDIS_HOST="localhost" FLASK_ENV="development" FLASK_APP="main" flask run
