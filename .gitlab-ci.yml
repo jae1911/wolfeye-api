@@ -1,0 +1,20 @@
+# Note: This CI pipeline configuration only checks if the API server can boot, it doesn't check if all documented endpoints are working as expected.
+image: python:latest
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache:
+  paths:
+    - .cache/pip
+    - venv/
+
+before_script:
+  - python -V
+  - python -m venv venv
+  - source venv/bin/activate
+  - pip install -r requirements.txt
+
+test:
+  script:
+    - REDIS_HOST="localhost" FLASK_ENV="development" FLASK_APP="main" flask run
