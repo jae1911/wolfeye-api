@@ -12,10 +12,7 @@ cache:
 before_script:
   - python -V
 
-dependencies:
-  script:
-    - pip install -r requirements.txt
-
 test:
   script:
+    - pip install -r requirements.txt
     - REDIS_HOST="localhost" FLASK_ENV="development" FLASK_APP="main" flask run
