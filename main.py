@@ -138,12 +138,17 @@ def api_search():
     if not query:
         return jsonify({'err': 'missing query'}), 400
 
+    try:
+        page = int(data.get('page'))
+    except:
+        page = 0
+
     cache = False
     res = None
     ttl = 0
 
     query_trimmed = query.replace(' ', '_').replace('\'', '-')
-    escaped_query = 'search_' + re.escape(query_trimmed)
+    escaped_query = f'search_{re.escape(query_trimmed)}_{page}'
 
     cached_result = r.get(escaped_query)
     if cached_result:
@@ -154,7 +159,7 @@ def api_search():
     else:
         matched_content = []
 
-        first_pass = db.Search().select().where(db.Search.title.contains(query))
+        first_pass = db.Search().select().where(db.Search.title.contains(query)).paginate(page, 150)
         for content in first_pass:
             match = {
                 'title': content.title,
@@ -167,7 +172,7 @@ def api_search():
 
         exploded_query = query.split(' ')
         for shard in exploded_query:
-            second_pass = db.Search().select().where(db.Search.title.contains(shard))
+            second_pass = db.Search().select().where(db.Search.title.contains(shard)).paginate(page, 150)
 
             for content in second_pass:
                 already = False
@@ -184,7 +189,7 @@ def api_search():
                     }
                     matched_content.append(match)
 
-            third_pass = db.Search().select().where(db.Search.url.contains(shard))
+            third_pass = db.Search().select().where(db.Search.url.contains(shard)).paginate(page, 150)
             for content in third_pass:
                 already = False
 
@@ -200,7 +205,7 @@ def api_search():
                     }
                     matched_content.append(match)
 
-            fourth_pass = db.Search().select().where(db.Search.description.contains(shard))
+            fourth_pass = db.Search().select().where(db.Search.description.contains(shard)).paginate(page, 150)
             for content in fourth_pass:
                 already = False
 
@@ -217,7 +222,7 @@ def api_search():
                     matched_content.append(match)
 
             if not matched_content:
-                fifth_pass = db.Search().select().where(db.Search.url.contains(shard))
+                fifth_pass = db.Search().select().where(db.Search.url.contains(shard)).paginate(page, 150)
                 for content in fifth_pass:
                     match = {
                         'title': content.title,
