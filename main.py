@@ -148,7 +148,7 @@ def api_search():
     ttl = 0
 
     query_trimmed = query.replace(' ', '_').replace('\'', '-')
-    escaped_query = f'search_{re.escape(query_trimmed)}_{page}'
+    escaped_query = f'search_{re.escape(query_trimmed)}_{page}'.lower()
 
     cached_result = r.get(escaped_query)
     if cached_result:
