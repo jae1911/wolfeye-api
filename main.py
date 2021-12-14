@@ -1,27 +1,31 @@
-from flask import Flask, jsonify, request
-from apscheduler.schedulers.background import BackgroundScheduler
-from playhouse.shortcuts import model_to_dict, dict_to_model
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-from autocorrect import Speller
+""" Main file for the Wolfeye Search Engine API
+"""
 
 import datetime
-import redis
-import time
-import atexit
-import re
 import json
-import ast
-import os
-import requests
 import logging
+import os
+import re
+import redis
+import requests
+
+from flask import Flask, jsonify, request, abort
+from flask_limiter import Limiter
+from autocorrect import Speller
 
 import db
 
 app = Flask(__name__)
 
 def get_remote_ip():
-    return request.headers.get('X-Forwarded-For')
+    """ Will return the IP of a user behind a reverse proxy (used by the rate limiter)
+    """
+    res = request.headers.get('X-Forwarded-For')
+
+    if not res:
+        res = request.remote_addr
+
+    return res
 
 limiter = Limiter(
     app,
@@ -30,7 +34,9 @@ limiter = Limiter(
 )
 
 log = logging.getLogger('werkzeug')
+app_log = logging.getLogger('wolfeye')
 log.setLevel(logging.ERROR)
+app_log.setLevel(logging.INFO)
 
 db.database.connect()
 db.database.create_tables([db.Search, db.Token])
@@ -63,12 +69,14 @@ def api_total_db():
         count = int(cached_result)
         cache = True
         ttl = r.ttl('total_count')
+        app_log.info(f'Using cached content for total_count; ttl {ttl}')
     else:
         res = db.Search.select().count()
         if res:
             count = res
             time_to_expire_s = 1800
             r.set('total_count', res, ex=time_to_expire_s)
+            app_log.info(f'Cached total query with TTL at {time_to_expire_s}')
 
     return jsonify({'count': count, 'cache-hit': cache, 'ttl': ttl})
 
@@ -98,18 +106,20 @@ def api_tocorrect():
         cache = True
         corrected = True
         ttl = r.ttl(string_base)
+        app_log.info(f'Using cached content for {string_base}; ttl {ttl}')
     else:
         if string_base == 'a':
-            final_ttl = 60 * 60 * 24 * 365 * 15
-            r.set(string_base, 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', ex=final_ttl)
+            ttl = 60 * 60 * 24 * 365 * 15
+            r.set(string_base, 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', ex=ttl)
 
         spell = Speller()
         res = spell(string_base)
 
         if res != string_base:
             corrected = True
-            final_ttl = 60 * 60 * 24
-            r.set(string_base, res, ex=final_ttl)
+            ttl = 60 * 60 * 24
+            r.set(string_base, res, ex=ttl)
+            app_log.info(f'Cached {string_base} query with TTL at {ttl}')
 
     return jsonify({'res': res, 'corrected': corrected, 'cache-hit': cache, 'ttl': ttl})
 
@@ -134,12 +144,13 @@ def api_search():
 
     query_trimmed = query.replace(' ', '_').replace('\'', '-')
     escaped_query = 'search_' + re.escape(query_trimmed)
-    
+
     cached_result = r.get(escaped_query)
     if cached_result:
         res = json.loads(cached_result)
         cache = True
         ttl = r.ttl(escaped_query)
+        app_log.info(f'Using cached result for {escaped_query}; ttl {ttl}')
     else:
         matched_content = []
 
@@ -214,8 +225,9 @@ def api_search():
                         'description': content.description
                     }
 
-        time_to_expire_s = 60 * 15
-        r.set(escaped_query, str(json.dumps(matched_content)), ex=time_to_expire_s)
+        ttl = 60 * 15
+        r.set(escaped_query, str(json.dumps(matched_content)), ex=ttl)
+        app_log.info(f'Cached {escaped_query} query with TTL at {ttl}')
 
     return jsonify({'res': res, 'cache-hit': cache, 'ttl': ttl})
 
@@ -253,6 +265,8 @@ def api_admin_token_add():
     if not expiry:
         expiry = datetime.datetime.now() + datetime.timedelta(days=5000)
 
+    app_log.warning(f'{get_remote_ip()} added a new token {new_token} with expiry {expiry}')
+
     try:
         existing = db.Token.select().where(db.Token.token == new_token).get()
     except:
@@ -289,6 +303,8 @@ def api_admin_get_all():
     elif current_token.expiry_date < datetime.datetime.now():
         return jsonify({'err': 'unauthorized'}), 401
 
+    app_log.warning(f'{get_remote_ip()} requested a full archive')
+
     res = []
     everything_in_db = db.Search.select()
 
@@ -309,59 +325,74 @@ def api_crawler_add():
     """ Endpoint for the crawler to add URLs to the database
     """
 
+    err = []
     data = request.json
 
     if not data:
-        return jsonify({'err': 'invalid request'}), 400
+        err.append("missing request data")
 
-    token = data.get('token')
-    if not token:
-        return jsonify({'err': 'invalid request'}), 400
+    if not err:
+        token = data.get('token')
+    if not err and not token or err:
+        err.append("missing token")
 
     try:
         current_token = db.Token.select().where(db.Token.token == token).get()
+
+        if not err and current_token.expiry_date < datetime.datetime.now():
+            err.append("token has expired, please request another one")
     except:
-        current_token = None
+        pass
 
-    if not current_token:
-        return jsonify({'err': 'unauthorized'}), 401
-    elif current_token.expiry_date < datetime.datetime.now():
-        return jsonify({'err': 'unauthorized'}), 401
+    url, title, description = None, None, None
+    if not err:
+        url = data.get('url')
+        title = data.get('title')
+        description = data.get('description')
 
-    url = data.get('url')
-    title = data.get('title')
-    description = data.get('description')
+    if not err and not url or not title:
+        err.append("invalid request")
 
-    if not url or not title:
-        return jsonify({'err': 'invalid request'}), 400
+    if not err:
+        if not description:
+            description = 'No description provided for this website.'
 
-    if not description:
-        description = 'No description provided for this website.'
+        try:
+            existing_url = db.Search.select().where(db.Search.url == url).get()
+        except:
+            existing_url = None
 
-    try:
-        existing_url = db.Search.select().where(db.Search.url == url).get()
-    except:
-        existing_url = None
+        last_fetched = datetime.datetime.now()
 
-    if existing_url:
+        if existing_url:
 
-        if existing_url.description == description and existing_url.title == title:
-            return jsonify({'err': 'already exists', 'fetched_on': existing_url.last_fetched})
+            if existing_url.description == description and existing_url.title == title:
+                app_log.info(f'{url} has already been added on {existing_url.last_fetched}')
+                return jsonify({'err': 'already exists', 'fetched_on': existing_url.last_fetched})
+            else:
+                if existing_url.description != description:
+                    existing_url.description = description
+
+                if existing_url.title != title:
+                    existing_url.title = title
+
+                existing_url.last_fetched = last_fetched
+                existing_url.save()
         else:
-            if existing_url.description != description:
-                existing_url.description = description
+            new_result = db.Search(
+                url=url,
+                title=title,
+                description=description,
+                last_fetched=last_fetched
+            )
 
-            if existing_url.title != title:
-                existing_url.title = title
+            new_result.save()
 
-            existing_url.last_fetched = datetime.datetime.now()
-            existing_url.save()
-            return jsonify({'success': 'ok'})
+        app_log.info(f'{get_remote_ip()} (using {token}) added a new URL {url} - {last_fetched}')
 
-    new_result = db.Search(url=url, title=title, description=description, last_fetched=datetime.datetime.now())
-    new_result.save()
-
-    return jsonify({'success': 'ok'})
+        return jsonify({'success': 'ok'})
+    else:
+        return jsonify({'err': json.dumps(err)}), 400
 
 @app.route('/api/instant', methods=['POST'])
 @limiter.limit("3 per minute")
@@ -390,9 +421,10 @@ def api_instant():
         res = json.loads(cached_result)
         cache = True
         ttl = r.ttl(escaped_query)
+        app_log.info(f'Using cached result for {escaped_query}; ttl {ttl}')
     else:
         ddg_api_query_url = f"https://api.duckduckgo.com/?q={query}&format=json"
-        
+
         req = requests.get(ddg_api_query_url)
 
         if req:
@@ -400,7 +432,11 @@ def api_instant():
 
             res = response
 
-            time_to_expire_s = 60 * 60
-            r.set(escaped_query, str(json.dumps(response)), ex=time_to_expire_s)
+            ttl = 60 * 60
+            r.set(escaped_query, str(json.dumps(response)), ex=ttl)
+            app_log.info(f'Cached {escaped_query} query with TTL at {ttl}')
+        else:
+            res = None
+            ttl = -1
 
     return jsonify({'res': res, 'cache-hit': cache, 'ttl': ttl})
