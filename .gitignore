@@ -1,5 +1,6 @@
 venv/
 *.db
+db/
 __pycache__
 docker/
 wolfeye/
