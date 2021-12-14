@@ -1,5 +1,5 @@
 # Note: This CI pipeline configuration only checks if the API server can boot, it doesn't check if all documented endpoints are working as expected.
-image: python:latest
+image: python:3-buster
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
