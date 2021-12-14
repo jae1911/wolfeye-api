@@ -11,9 +11,10 @@ cache:
 
 before_script:
   - python -V
-  - python -m venv venv
-  - source venv/bin/activate
-  - pip install -r requirements.txt
+
+dependencies:
+  script:
+    - pip install -r requirements.txt
 
 test:
   script:
