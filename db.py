@@ -1,33 +1,49 @@
-from peewee import *
+""" This is the module that manages the database operations.
+    Current ORM is called Peewee.
+"""
 
-from playhouse.migrate import *
+import logging
+import peewee
 
-database = SqliteDatabase('db/search.db')
+from playhouse import migrate
+
+#from peewee import *
+#from playhouse.migrate import *
+
+database = peewee.SqliteDatabase('db/search.db')
 
 def migrate_db():
-    migrator = SqliteMigrator(database)
+    """ Migrate the database to get new tables
+    """
+    migrator = migrate.SqliteMigrator(database)
     try:
-        description = TextField(default='')
-        migrate(
+        description = peewee.TextField(default='')
+        migrate.migrate(
             migrator.add_column('search', 'description', description)
         )
-    except:
-        pass
+    except peewee.OperationalError:
+        logging.warning("Could not migrate database, maybe already migrated?")
 
 
-class BaseModel(Model):
+class BaseModel(peewee.Model): # pylint: disable=too-few-public-methods
     """ Base to be used by other tables
     """
 
-    class Meta:
+    class Meta: # pylint: disable=too-few-public-methods
+        """ Default peewee metal class to set the database used
+        """
         database = database
 
-class Search(BaseModel):
-    title = CharField()
-    url = CharField()
-    last_fetched = DateTimeField()
-    description = TextField()
+class Search(BaseModel): # pylint: disable=too-few-public-methods
+    """ Default table that stores the search results
+    """
+    title = peewee.CharField()
+    url = peewee.CharField()
+    last_fetched = peewee.DateTimeField()
+    description = peewee.TextField()
 
-class Token(BaseModel):
-    token = CharField()
-    expiry_date = DateTimeField()
+class Token(BaseModel): # pylint: disable=too-few-public-methods
+    """ Table that stores the admin tokens
+    """
+    token = peewee.CharField()
+    expiry_date = peewee.DateTimeField()
