@@ -7,8 +7,7 @@ import peewee
 
 from playhouse import migrate
 
-#from peewee import *
-#from playhouse.migrate import *
+db_logger = logging.getLogger('database')
 
 database = peewee.SqliteDatabase('db/search.db')
 
@@ -22,7 +21,7 @@ def migrate_db():
             migrator.add_column('search', 'description', description)
         )
     except peewee.OperationalError:
-        logging.warning("Could not migrate database, maybe already migrated?")
+        db_logger.warning("Could not migrate database, maybe already migrated?")
 
 
 class BaseModel(peewee.Model): # pylint: disable=too-few-public-methods
