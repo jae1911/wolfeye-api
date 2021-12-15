@@ -13,13 +13,14 @@ def migrate_db():
     """ Migrate the database to get new tables
     """
     migrator = migrate.SqliteMigrator(database)
+
     try:
         description = peewee.TextField(default='')
         migrate.migrate(
             migrator.add_column('search', 'description', description)
         )
     except peewee.OperationalError:
-        logging.warning("Could not migrate database, maybe already migrated?")
+        logging.warning(f'Could not update search table, maybe already migrated?')
 
 
 class BaseModel(peewee.Model): # pylint: disable=too-few-public-methods
