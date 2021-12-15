@@ -9,7 +9,7 @@ import re
 import redis
 import requests
 
-from flask import Flask, jsonify, request, abort
+from flask import Flask, jsonify, request
 from flask_limiter import Limiter
 from autocorrect import Speller
 
