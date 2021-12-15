@@ -36,7 +36,12 @@ limiter = Limiter(
 log = logging.getLogger('werkzeug')
 app_log = logging.getLogger('wolfeye')
 log.setLevel(logging.ERROR)
-app_log.setLevel(logging.INFO)
+
+default_log_level = os.environ.get('FLASK_ENV')
+if default_log_level == 'development':
+    app_log.setLevel(logging.DEBUG)
+else:
+    app_log.setLevel(logging.INFO)
 
 db.database.connect()
 db.database.create_tables([db.Search, db.Token])
@@ -139,16 +144,18 @@ def api_search():
         return jsonify({'err': 'missing query'}), 400
 
     try:
-        page = int(data.get('page'))
+        page = int(data.get('page')) + 1
     except:
-        page = 0
+        page = 1
 
     cache = False
     res = None
     ttl = 0
+    count = 0
 
     query_trimmed = query.replace(' ', '_').replace('\'', '-')
     escaped_query = f'search_{re.escape(query_trimmed)}_{page}'.lower()
+    cached_count = f'{escaped_query}_count'
 
     cached_result = r.get(escaped_query)
     if cached_result:
@@ -156,24 +163,18 @@ def api_search():
         cache = True
         ttl = r.ttl(escaped_query)
         app_log.info(f'Using cached result for {escaped_query}; ttl {ttl}')
+        count = r.get(cached_count)
+        if not count:
+            count = 150
     else:
         matched_content = []
 
-        first_pass = db.Search().select().where(db.Search.title.contains(query)).paginate(page, 150)
-        for content in first_pass:
-            match = {
-                'title': content.title,
-                'url': content.url,
-                'description': content.description
-            }
-            matched_content.append(match)
-
-            res = matched_content
-
         exploded_query = query.split(' ')
+        app_log.debug(f'Exploded query: {exploded_query}')
         for shard in exploded_query:
-            second_pass = db.Search().select().where(db.Search.title.contains(shard)).paginate(page, 150)
-
+            app_log.debug(f'Testing shard {shard}')
+            second_pass = db.Search().select().where(db.Search.title.contains(shard) | db.Search.url.contains(shard) | db.Search.description.contains(shard)).paginate(page, 150)
+            app_log.debug(f'{second_pass}')
             for content in second_pass:
                 already = False
 
@@ -185,56 +186,19 @@ def api_search():
                     match = {
                         'title': content.title,
                         'url': content.url,
-                        'description': content.description
+                        'description': content.description,
+                        'id': content.id
                     }
                     matched_content.append(match)
 
-            third_pass = db.Search().select().where(db.Search.url.contains(shard)).paginate(page, 150)
-            for content in third_pass:
-                already = False
-
-                for stuff in matched_content:
-                    if content.url == stuff['url']:
-                        already = True
-
-                if not already:
-                    match = {
-                        'title': content.title,
-                        'url': content.url,
-                        'description': content.description
-                    }
-                    matched_content.append(match)
-
-            fourth_pass = db.Search().select().where(db.Search.description.contains(shard)).paginate(page, 150)
-            for content in fourth_pass:
-                already = False
-
-                for stuff in matched_content:
-                    if content.url == stuff['url']:
-                        already = True
-
-                if not already:
-                    match = {
-                        'title': content.title,
-                        'url': content.url,
-                        'description': content.description
-                    }
-                    matched_content.append(match)
-
-            if not matched_content:
-                fifth_pass = db.Search().select().where(db.Search.url.contains(shard)).paginate(page, 150)
-                for content in fifth_pass:
-                    match = {
-                        'title': content.title,
-                        'url': content.url,
-                        'description': content.description
-                    }
-
+        count = len(matched_content)
         ttl = 60 * 15
         r.set(escaped_query, str(json.dumps(matched_content)), ex=ttl)
-        app_log.info(f'Cached {escaped_query} query with TTL at {ttl}')
+        res = matched_content
+        r.set(cached_count, count, ex=ttl)
+        app_log.debug(f'Cached {escaped_query} query with TTL at {ttl} and {count} results')
 
-    return jsonify({'res': res, 'cache-hit': cache, 'ttl': ttl})
+    return jsonify({'res': res, 'cache-hit': cache, 'ttl': ttl, 'count': int(count)})
 
 @app.route('/api/admin/token/add', methods=['POST'])
 @limiter.exempt
