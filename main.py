@@ -30,7 +30,7 @@ def get_remote_ip():
 limiter = Limiter(
     app,
     key_func=get_remote_ip,
-    default_limits=["20 per minute"]
+    default_limits=["100 per minute"]
 )
 
 log = logging.getLogger('werkzeug')
@@ -364,7 +364,7 @@ def api_crawler_add():
         return jsonify({'err': json.dumps(err)}), 400
 
 @app.route('/api/instant', methods=['POST'])
-@limiter.limit("3 per minute")
+@limiter.limit("15 per minute")
 def api_instant():
     """ Instant answers (DDG API)
     """
