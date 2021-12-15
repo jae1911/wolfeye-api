@@ -171,7 +171,7 @@ def api_search():
 
         exploded_query = query.split(' ')
 
-        useless_words = ['how', 'what', 'where', 'who', 'is', 'the']
+        useless_words = ['how', 'what', 'where', 'who', 'is', 'the', 'it', 'a', 'an', 'we', 'you', 'i', 'when', 'why', 'they', 'he', 'she', 'her', 'him', 'his', 'their', 'them', 'us', 'our', 'your', 'hers', 'mine', 'theirs', 'any', 'such', 'one', 'both', 'such', 'that', 'these', 'this', 'those', 'whatever', 'which', 'whichever', 'whoever', 'whom', 'whomever', 'whose', 'as', 'whatever', 'thou', 'thee', 'thy', 'thine', 'ye', 'its', 'suchlike', 'then', 'whatsoever', 'wheresoever', 'into', 'comment', 'quoi', 'où', 'ou', 'qui', 'est', 'le', 'la', 'ceci', 'cela', 'un', 'une', 'nous', 'on', 'vous', 'tu', 'je', 'quand', 'pourquoi', 'ils', 'elles', 'iel', 'iels', 'ielles', 'il', 'elle', 'son', 'sa', 'sien', 'sienne', 'ses', 'leurs', 'leur', 'notre', 'nôtre", 'votre', 'vôtre', 'mien', 'tien', 'mienne', 'tienne', 'nimporte', 'n\'importe', 'comme', 'les', 'tel', 'telle', 'tels', 'telles', 'ce', 'cette', 'celle', 'ceux', 'dont', 'en', 'puis', 'par', 'pour', 'sur', 'sans', 'avec', 'vers']
 
         for word in exploded_query:
             if word.lower() in useless_words:
