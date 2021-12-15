@@ -170,6 +170,14 @@ def api_search():
         matched_content = []
 
         exploded_query = query.split(' ')
+
+        useless_words = ['how', 'what', 'where', 'who', 'is', 'the']
+
+        for word in exploded_query:
+            if word.lower() in useless_words:
+                app_log.debug(f'Removed {word} from {query}')
+                exploded_query.remove(word)
+
         app_log.debug(f'Exploded query: {exploded_query}')
         for shard in exploded_query:
             app_log.debug(f'Testing shard {shard}')
