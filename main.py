@@ -43,7 +43,7 @@ default_log_level = os.environ.get('FLASK_ENV')
 if default_log_level == 'development':
     app_log.setLevel(logging.DEBUG)
 else:
-    app_log.setLevel(logging.INFO)
+    app_log.setLevel(logging.ERROR)
 
 db.database.connect()
 db.database.create_tables([db.Search, db.Token])
