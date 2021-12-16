@@ -17,6 +17,8 @@ import db
 
 app = Flask(__name__)
 
+app.config['JSON_AS_ASCII'] = False
+
 def get_remote_ip():
     """ Will return the IP of a user behind a reverse proxy (used by the rate limiter)
     """
